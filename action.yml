@@ -1,0 +1,82 @@
+name: 'Setup Tcl'
+description: "Sets up a specific version of Tcl for building extensions"
+author: "Ashok P. Nadkarni"
+inputs:
+  tcl-osver:
+    description: 'The operating system Github label we are running on. (e.g windows-2022, ubuntu-latest etc.)'
+    required: true
+  tcl-branch:
+    description: "Tag of Tcl repository branch"
+    required: false
+    default: 'main'
+  tcl-arch:
+    description: "Architecture - x86 or x64. Only used on Windows"
+    required: false
+    default: 'x64'
+  tcl-toolchain:
+    description: "Toolchain - mingw64 or vc. Only used on Windows"
+    required: false
+    default: 'vc'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set Tcl path for Windows
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        echo "TCLDIR=C:/tcl/${{ inputs.tcl-toolchain }}-${{ inputs.tcl-arch }}-${{ inputs.tcl-branch }}" >> $env:GITHUB_ENV
+        echo "TCLSUBDIR=${{ inputs.tcl-toolchain }}-${{ inputs.tcl-arch }}-${{ inputs.tcl-branch }}" >> $env:GITHUB_ENV
+
+    - name: Set Tcl path for non-Windows
+      if: runner.os != 'Windows'
+      shell: bash
+      run: |
+        echo "TCLDIR=/tmp/tcl/${{ inputs.tcl-branch }}" >> $GITHUB_ENV
+        echo "TCLSUBDIR=${{ inputs.tcl-branch }}" >> $GITHUB_ENV
+
+    - name: Cache Tcl build
+      id: tcl-cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ env.TCLDIR }}
+        key: ${{ runner.os }}-${{ inputs.tcl-osver }}-tcl-${{ env.TCLSUBDIR }}
+
+    - name: Checkout Tcl
+      if: steps.tcl-cache.outputs.cache-hit != 'true'
+      uses: actions/checkout@v4
+      with:
+        repository: tcltk/tcl
+        ref: ${{ inputs.tcl-branch }}
+        path: tcl-${{ inputs.tcl-branch }}
+
+    - name: Build Tcl on Windows with nmake
+      if: runner.os == 'Windows' && inputs.tcl-toolchain == 'vc' && steps.tcl-cache.outputs.cache-hit != 'true'
+      working-directory: tcl-${{ inputs.tcl-branch }}/win
+      shell: cmd
+      run: |
+        nmake /f makefile.vc INSTALLDIR=${{ env.TCLDIR }}
+        nmake /f makefile.vc INSTALLDIR=${{ env.TCLDIR }} install
+
+    - name: Build Tcl on Windows with MingW64
+      if: runner.os == 'Windows' && inputs.tcl-toolchain == 'mingw64' && steps.tcl-cache.outputs.cache-hit != 'true'
+      working-directory: tcl-${{ inputs.tcl-branch }}/win
+      shell: msys2 {0}
+      run: |
+        mkdir build
+        cd build
+        ../configure --prefix=${{ env.TCLDIR }} || (cat config.log && exit 1)
+        make
+        make install
+
+    - name: Build Tcl on non-Windows
+      if: runner.os != 'Windows' && steps.tcl-cache.outputs.cache-hit != 'true'
+      working-directory: tcl-${{ inputs.tcl-branch }}/unix
+      shell: bash
+      run: |
+        mkdir build
+        cd build
+        ../configure --prefix=${{ env.TCLDIR }} || (cat config.log && exit 1)
+        make
+        make install
+
