@@ -55,8 +55,8 @@ runs:
       working-directory: tcl-${{ inputs.tcl-branch }}/win
       shell: cmd
       run: |
-        nmake /f makefile.vc INSTALLDIR=${{ env.TCLDIR }}
-        nmake /f makefile.vc INSTALLDIR=${{ env.TCLDIR }} install
+        nmake /s /f makefile.vc INSTALLDIR=${{ env.TCLDIR }}
+        nmake /s /f makefile.vc INSTALLDIR=${{ env.TCLDIR }} install
 
     - name: Build Tcl on Windows with MingW64
       if: runner.os == 'Windows' && inputs.tcl-toolchain == 'mingw64' && steps.tcl-cache.outputs.cache-hit != 'true'
@@ -66,7 +66,10 @@ runs:
         mkdir build
         cd build
         ../configure --prefix=${{ env.TCLDIR }} || (cat config.log && exit 1)
-        make
+        which gcc
+        which ld
+        gcc --print-prog-name=ld
+        make -s
         make install
 
     - name: Build Tcl on non-Windows
@@ -77,6 +80,6 @@ runs:
         mkdir build
         cd build
         ../configure --prefix=${{ env.TCLDIR }} || (cat config.log && exit 1)
-        make
+        make -s
         make install
 
