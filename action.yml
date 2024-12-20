@@ -66,9 +66,6 @@ runs:
         mkdir build
         cd build
         ../configure --prefix=${{ env.TCLDIR }} || (cat config.log && exit 1)
-        which gcc
-        which ld
-        gcc --print-prog-name=ld
         make -s
         make install
 
