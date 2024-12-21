@@ -25,6 +25,7 @@ runs:
       if: runner.os == 'Windows'
       shell: pwsh
       run: |
+        echo "IMAGEOS=${ImageOS}" >> $env:GITHUB_ENV
         echo "TCLDIR=${{ runner.temp }}/tcl/${{ inputs.toolchain }}-${{ inputs.target-arch }}-${{ inputs.tcl-tag }}" >> $env:GITHUB_ENV
         echo "TCLSUBDIR=${{ inputs.toolchain }}-${{ inputs.target-arch }}-${{ inputs.tcl-tag }}" >> $env:GITHUB_ENV
         echo "TCLEXTRASDIR=${{ runner.temp }}/tcl-external-libs" >> $env:GITHUB_ENV
@@ -34,6 +35,7 @@ runs:
       shell: bash
       run: |
         env
+        echo "IMAGEOS=${ImageOS}" >> $GITHUB_ENV
         echo "TCLDIR=${{ runner.temp }}/tcl/${{ inputs.tcl-tag }}" >> $GITHUB_ENV
         echo "TCLSUBDIR=${{ inputs.tcl-tag }}" >> $GITHUB_ENV
         echo "TCLEXTRASDIR=${{ runner.temp }}/tcl-external-libs" >> $GITHUB_ENV
@@ -43,7 +45,7 @@ runs:
       uses: actions/cache@v4
       with:
         path: ${{ env.TCLDIR }}
-        key: ${{ runner.os }}-${{ env.ImageOS }}-tcl-${{ env.TCLSUBDIR }}
+        key: ${{ runner.os }}-${{ env.IMAGEOS }}-tcl-${{ env.TCLSUBDIR }}
 
     - name: Checkout Tcl
       if: steps.tcl-cache.outputs.cache-hit != 'true'
