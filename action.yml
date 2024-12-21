@@ -21,6 +21,11 @@ runs:
   using: 'composite'
   steps:
 
+    # Set up environment variables that can be used by steps below as well
+    # as steps in the caller workflow.
+    # NOTE: the preset IMAGEOS is explicitly set to itself else it is not available
+    # in the tcl-cache step below. No idea why.
+
     - name: Set Tcl path for Windows
       if: runner.os == 'Windows'
       shell: pwsh
@@ -34,11 +39,15 @@ runs:
       if: runner.os != 'Windows'
       shell: bash
       run: |
-        env
         echo "IMAGEOS=${ImageOS}" >> $GITHUB_ENV
         echo "TCLDIR=${{ runner.temp }}/tcl/${{ inputs.tcl-tag }}" >> $GITHUB_ENV
         echo "TCLSUBDIR=${{ inputs.tcl-tag }}" >> $GITHUB_ENV
         echo "TCLEXTRASDIR=${{ runner.temp }}/tcl-external-libs" >> $GITHUB_ENV
+
+    # Cache Tcl so we do not have to rebuild everytime. Note runner.os
+    # does not suffice as subkey as it does not include os version. Hence
+    # we also include the OS image name (e.g. ubuntu20). And of course
+    # the Tcl tag.
 
     - name: Cache Tcl build
       id: tcl-cache
@@ -54,6 +63,8 @@ runs:
         repository: tcltk/tcl
         ref: ${{ inputs.tcl-tag }}
         path: tcl-${{ inputs.tcl-tag }}
+
+    # Build Tcl as per the input configuration.
 
     - name: Build Tcl on Windows with nmake
       if: runner.os == 'Windows' && inputs.toolchain == 'vc' && steps.tcl-cache.outputs.cache-hit != 'true'
