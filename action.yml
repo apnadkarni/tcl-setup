@@ -20,8 +20,7 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - name: Print env
-      run: env
+
     - name: Set Tcl path for Windows
       if: runner.os == 'Windows'
       shell: pwsh
@@ -34,6 +33,7 @@ runs:
       if: runner.os != 'Windows'
       shell: bash
       run: |
+        env
         echo "TCLDIR=${{ runner.temp }}/tcl/${{ inputs.tcl-tag }}" >> $GITHUB_ENV
         echo "TCLSUBDIR=${{ inputs.tcl-tag }}" >> $GITHUB_ENV
         echo "TCLEXTRASDIR=${{ runner.temp }}/tcl-external-libs" >> $GITHUB_ENV
