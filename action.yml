@@ -20,6 +20,8 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    - name: Print env
+      run: env
     - name: Set Tcl path for Windows
       if: runner.os == 'Windows'
       shell: pwsh
