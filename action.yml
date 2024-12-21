@@ -1,14 +1,13 @@
+# Action to setup a custom Tcl for building and testing Tcl packages
+# See README.md
+
 name: 'Setup Tcl'
 description: "Sets up a specific version of Tcl for building extensions"
 author: "Ashok P. Nadkarni"
 inputs:
-  runner-os:
-    description: 'The operating system Github label we are running on. (e.g windows-2022, ubuntu-latest etc.)'
-    required: true
   tcl-tag:
     description: "Tag of Tcl repository branch"
-    required: false
-    default: 'main'
+    required: true
   target-arch:
     description: "Architecture - x86 or x64. Only used on Windows"
     required: false
@@ -25,22 +24,24 @@ runs:
       if: runner.os == 'Windows'
       shell: pwsh
       run: |
-        echo "TCLDIR=C:/tcl/${{ inputs.toolchain }}-${{ inputs.target-arch }}-${{ inputs.tcl-tag }}" >> $env:GITHUB_ENV
+        echo "TCLDIR=${{ runner.temp }}/tcl/${{ inputs.toolchain }}-${{ inputs.target-arch }}-${{ inputs.tcl-tag }}" >> $env:GITHUB_ENV
         echo "TCLSUBDIR=${{ inputs.toolchain }}-${{ inputs.target-arch }}-${{ inputs.tcl-tag }}" >> $env:GITHUB_ENV
+        echo "TCLEXTRASDIR=${{ runner.temp }}/tcl-external-libs" >> $env:GITHUB_ENV
 
     - name: Set Tcl path for non-Windows
       if: runner.os != 'Windows'
       shell: bash
       run: |
-        echo "TCLDIR=/tmp/tcl/${{ inputs.tcl-tag }}" >> $GITHUB_ENV
+        echo "TCLDIR=${{ runner.temp }}/tcl/${{ inputs.tcl-tag }}" >> $GITHUB_ENV
         echo "TCLSUBDIR=${{ inputs.tcl-tag }}" >> $GITHUB_ENV
+        echo "TCLEXTRASDIR=${{ runner.temp }}/tcl-external-libs" >> $GITHUB_ENV
 
     - name: Cache Tcl build
       id: tcl-cache
       uses: actions/cache@v4
       with:
         path: ${{ env.TCLDIR }}
-        key: ${{ runner.os }}-${{ inputs.runner-os }}-tcl-${{ env.TCLSUBDIR }}
+        key: ${{ runner.os }}-${{ env.ImageOS }}-tcl-${{ env.TCLSUBDIR }}
 
     - name: Checkout Tcl
       if: steps.tcl-cache.outputs.cache-hit != 'true'
