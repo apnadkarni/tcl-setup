@@ -27,7 +27,8 @@ runs:
       shell: pwsh
       run: |
         echo "Toolchain is ${{ inputs.toolchain }}"
-        echo "::setFailed::Invalid toolchain value ${{ inputs.toolchain }}. Must be vc or mingw64."
+        echo "::error::Invalid toolchain value (${{ inputs.toolchain }}.) Must be vc or mingw64."
+        exit 1
 
     # Set up environment variables that can be used by steps below as well
     # as steps in the caller workflow.
