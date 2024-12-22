@@ -118,6 +118,8 @@ runs:
         mkdir build
         cd build
         ../configure --prefix=${{ env.TCLDIR }} || (cat config.log && exit 1)
+        cat config.log
+        cat config.status
         make -s
         make install
 
