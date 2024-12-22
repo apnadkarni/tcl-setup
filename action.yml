@@ -25,6 +25,7 @@ runs:
 
     -name: Validate Visual C++ inputs
      if: runner.os == 'windows' && ! contains('vc,mingw64', inputs.toolchain)
+     shell: pwsh
      run: |
        echo "::setFailed::Invalid toolchain value ${{ inputs.toolchain }}. Must be vc or mingw64."
 
