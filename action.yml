@@ -48,18 +48,16 @@ runs:
     # in the tcl-cache step below. No idea why.
 
     - name: Set Tcl path for VC on Windows
-      if: runner.os == 'Windows' && ${{ inputs.toolchain }} == 'vc'
+      if: runner.os == 'Windows' && inputs.toolchain == 'vc'
       shell: pwsh
       run: |
-        echo "::error::XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-        exit 1
         echo "IMAGEOS=${ImageOS}" >> $env:GITHUB_ENV
         echo "TCLDIR=${{ runner.temp }}/tcl/${{ inputs.toolchain }}-${{ inputs.target-arch }}-${{ inputs.tcl-tag }}" >> $env:GITHUB_ENV
         echo "TCLSUBDIR=${{ inputs.toolchain }}-${{ inputs.target-arch }}-${{ inputs.tcl-tag }}" >> $env:GITHUB_ENV
         echo "TCLEXTRASDIR=${{ runner.temp }}/tcl-external-libs/${{ inputs.target-arch }}" >> $env:GITHUB_ENV
 
     - name: Set Tcl path for VC on Windows
-      if: runner.os == 'Windows' && ${{ inputs.toolchain }} == 'msys2'
+      if: runner.os == 'Windows' && inputs.toolchain == 'msys2'
       shell: bash
       run: |
         cygpath "IMAGEOS=${ImageOS}" >> $env:GITHUB_ENV
@@ -67,6 +65,11 @@ runs:
         cygpath "TCLSUBDIR=${{ inputs.toolchain }}-${{ inputs.target-arch }}-${{ inputs.tcl-tag }}" >> $env:GITHUB_ENV
         cygpath "TCLEXTRASDIR=${{ runner.temp }}/tcl-external-libs/${{ inputs.target-arch }}" >> $env:GITHUB_ENV
 
+    - name: debug env
+      if: runner.os == 'Windows' && inputs.toolchain == 'msys2'
+      shell: bash
+      run: env
+        env
 
     - name: Set Tcl path for non-Windows
       if: runner.os != 'Windows'
