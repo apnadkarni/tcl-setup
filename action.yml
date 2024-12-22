@@ -23,10 +23,12 @@ runs:
     # Validation
 
     - name: Validate Visual C++ inputs
-      if: runner.os == 'windows' && ! contains('vc,mingw64', inputs.toolchain)
+      if: runner.os == 'windows'
       shell: pwsh
       run: |
+        echo "Toolchain is ${{ inputs.toolchain }}"
         echo "::setFailed::Invalid toolchain value ${{ inputs.toolchain }}. Must be vc or mingw64."
+        exit 1
 
     # Set up environment variables that can be used by steps below as well
     # as steps in the caller workflow.
