@@ -60,10 +60,10 @@ runs:
       if: runner.os == 'Windows' && inputs.toolchain == 'msys2'
       shell: bash
       run: |
-        IMAGEOS=`cygpath "${ImageOS}"` >> $GITHUB_ENV
-        TCLDIR=`cygpath "${{ runner.temp }}/tcl/${{ inputs.toolchain }}-${{ inputs.target-arch }}-${{ inputs.tcl-tag }}"` >> $GITHUB_ENV
-        TCLSUBDIR=`cygpath "${{ inputs.toolchain }}-${{ inputs.target-arch }}-${{ inputs.tcl-tag }}"` >> $GITHUB_ENV
-        TCLEXTRASDIR=`cygpath "${{ runner.temp }}/tcl-external-libs/${{ inputs.target-arch }}"` >> $GITHUB_ENV
+        echo IMAGEOS=`cygpath "${ImageOS}"` >> $GITHUB_ENV
+        echo TCLDIR=`cygpath "${{ runner.temp }}/tcl/${{ inputs.toolchain }}-${{ inputs.target-arch }}-${{ inputs.tcl-tag }}"` >> $GITHUB_ENV
+        echo TCLSUBDIR=`cygpath "${{ inputs.toolchain }}-${{ inputs.target-arch }}-${{ inputs.tcl-tag }}"` >> $GITHUB_ENV
+        echo TCLEXTRASDIR=`cygpath "${{ runner.temp }}/tcl-external-libs/${{ inputs.target-arch }}"` >> $GITHUB_ENV
 
     - name: debug env
       if: runner.os == 'Windows' && inputs.toolchain == 'msys2'
