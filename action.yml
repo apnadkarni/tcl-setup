@@ -51,6 +51,8 @@ runs:
       if: runner.os == 'Windows' && ${{ inputs.toolchain }} == 'vc'
       shell: pwsh
       run: |
+        echo "::error::XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+        exit 1
         echo "IMAGEOS=${ImageOS}" >> $env:GITHUB_ENV
         echo "TCLDIR=${{ runner.temp }}/tcl/${{ inputs.toolchain }}-${{ inputs.target-arch }}-${{ inputs.tcl-tag }}" >> $env:GITHUB_ENV
         echo "TCLSUBDIR=${{ inputs.toolchain }}-${{ inputs.target-arch }}-${{ inputs.tcl-tag }}" >> $env:GITHUB_ENV
