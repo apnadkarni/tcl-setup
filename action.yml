@@ -29,14 +29,14 @@ runs:
         exit 1
 
     - name: Validate target-arch for Visual C++
-      if: runner.os == 'windows' && inputs.toolchain == 'vc' && ! contains('x86,x64', inputs.target-arch))
+      if: runner.os == 'windows' && inputs.toolchain == 'vc' && ! contains('x86,x64', inputs.target-arch)
       shell: pwsh
       run: |
         echo "::error::Invalid target-arch value (${{ inputs.target-arch }}.) Must be x86 or x64."
         exit 1
 
     - name: Validate target-arch for msys2
-      if: runner.os == 'windows' && inputs.toolchain == 'mingw' && ! contains('mingw32,mingw64', inputs.target-arch))
+      if: runner.os == 'windows' && inputs.toolchain == 'mingw' && ! contains('mingw32,mingw64', inputs.target-arch)
       shell: pwsh
       run: |
         echo "::error::Invalid target-arch value (${{ inputs.target-arch }}.) Must be mingw32 or mingw64."
