@@ -15,7 +15,6 @@ inputs:
   toolchain:
     description: "Toolchain - mingw64 or vc. Only used on Windows"
     required: false
-    default: 'vc'
 
 runs:
   using: 'composite'
