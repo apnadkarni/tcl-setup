@@ -19,13 +19,15 @@ Example:
     # against which the extension is to be built. Required.
     tcl-tag: 'main'
 
+    # The tool chain to use. Only used on Windows. Must be 'vc' for Visual C++
+    # or 'msys2' for MingW64. Required.
+    toolchain: 'vc'
+
     # The target architecture. Only used on Windows. Must be 'x64'
-    # or 'x86'. Optional, defaults to 'x64'.
+    # or 'x86' if toolchain is 'vc' and 'mingw32' or 'mingw64' if
+    # toolchain is 'msys2'. Required.
     target-arch: 'x64'
 
-    # The tool chain to use. Only used on Windows. Must be 'vc' for Visual C++
-    # or 'mingw64' for MingW64. Optional, defaults to 'vc`.
-    toolchain: 'vc'
 ```
 
 Invoking the action will result in a Tcl installation corresponding to the
