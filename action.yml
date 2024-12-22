@@ -21,6 +21,13 @@ runs:
   using: 'composite'
   steps:
 
+    # Validation
+
+    -name: Validate Visual C++ inputs
+     if: runner.os == 'windows' && ! contains('vc,mingw64', inputs.toolchain)
+     run: |
+       echo "::setFailed::Invalid toolchain value ${{ inputs.toolchain }}. Must be vc or mingw64."
+
     # Set up environment variables that can be used by steps below as well
     # as steps in the caller workflow.
     # NOTE: the preset IMAGEOS is explicitly set to itself else it is not available
