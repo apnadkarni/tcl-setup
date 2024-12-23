@@ -19,20 +19,28 @@ Example:
     # against which the extension is to be built. Required.
     tcl-tag: 'main'
 
+    # The tool chain to use. Only used on Windows. Must be 'vc' for Visual C++
+    # or 'msys2' for MingW64. Required.
+    toolchain: 'vc'
+
     # The target architecture. Only used on Windows. Must be 'x64'
-    # or 'x86'. Optional, defaults to 'x64'.
+    # or 'x86' if toolchain is 'vc' and 'mingw32' or 'mingw64' if
+    # toolchain is 'msys2'. Required.
     target-arch: 'x64'
 
-    # The tool chain to use. Only used on Windows. Must be 'vc' for Visual C++
-    # or 'mingw64' for MingW64. Optional, defaults to 'vc`.
-    toolchain: 'vc'
 ```
 
 Invoking the action will result in a Tcl installation corresponding to the
-specified tag. The location of the directory is stored in the `TCLDIR` environment
-variable for use by subsequent actions. The action also sets the `TClEXTRASDIR`
-environment variable to the location where any additional libraries required
-by the extension should be installed.
+specified tag. Additionally, the following environment variables are set
+for use by the steps in the caller.
 
-See [tcl-csv workflows](https://github.com/apnadkarni/tcl-csv/tree/main/.github/workflows)
-for example usage.
+- `TCLDIR` set to the location of the directory where Tcl is installed
+- `TCLEXTRASDIR` set to the directory where extensions may build any additional
+  libraries that may be required.
+- `IMAGEOS` set to the runner image (e.g. `ubuntu20`). This is supposed to be
+  already available in the `env` context but is not seen by the caching code
+  so it is set explicitly.
+
+Most extensions will only care about `TCLDIR`.
+
+See the previously mentioned templates for example usage.
