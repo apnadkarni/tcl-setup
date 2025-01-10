@@ -100,7 +100,7 @@ runs:
       uses: actions/cache@v4
       with:
         path: ${{ env.TCLINSTALLDIR }}
-        key: ${{ runner.os }}-${{ env.IMAGEOS }}-tcl-${{ env.TCLSUBDIR }}
+        key: ${{ runner.os }}-${{ env.IMAGEOS }}-tcltk-${{ env.TCLSUBDIR }}
 
     - name: Checkout Tcl
       if: steps.tcl-cache.outputs.cache-hit != 'true'
