@@ -8,6 +8,9 @@ inputs:
   tcl-tag:
     description: "Tag of Tcl repository branch"
     required: true
+  tk-tag:
+    description: "Tag of Tk repository branch. Only specify for Tk extensions"
+    required: false
   target-arch:
     description: "Architecture - x86 or x64. Only used on Windows"
     required: true
@@ -36,11 +39,24 @@ runs:
         exit 1
 
     - name: Validate target-arch for msys2
-      if: runner.os == 'windows' && inputs.toolchain == 'mingw' && ! contains('mingw32,mingw64', inputs.target-arch)
+      if: runner.os == 'windows' && inputs.toolchain == 'msys2' && ! contains('mingw32,mingw64', inputs.target-arch)
       shell: pwsh
       run: |
         echo "::error::Invalid target-arch value (${{ inputs.target-arch }}.) Must be mingw32 or mingw64."
         exit 1
+
+    - name: Disallow tk for msys2 and macos
+      if: inputs.tk-tag && (runner.os == 'macos')
+      shell: bash
+      run: |
+        echo "::error::Tk is not supported by this action on MacOS."
+        exit 1
+
+    - name: Setup system windowing libraries
+      if: inputs.tk-tag && runner.os != 'windows'
+      shell: bash
+      run: |
+        sudo apt-get install -y libxft-dev libxss-dev
 
     # Set up environment variables that can be used by steps below as well
     # as steps in the caller workflow.
@@ -52,17 +68,17 @@ runs:
       shell: pwsh
       run: |
         echo "IMAGEOS=${ImageOS}" >> $env:GITHUB_ENV
-        echo "TCLDIR=${{ runner.temp }}/tcl/${{ inputs.toolchain }}-${{ inputs.target-arch }}-${{ inputs.tcl-tag }}" >> $env:GITHUB_ENV
-        echo "TCLSUBDIR=${{ inputs.toolchain }}-${{ inputs.target-arch }}-${{ inputs.tcl-tag }}" >> $env:GITHUB_ENV
+        echo "TCLINSTALLDIR=${{ runner.temp }}/tcl/${{ inputs.toolchain }}-${{ inputs.target-arch }}-${{ inputs.tcl-tag }}-${{ inputs.tk-tag }}" >> $env:GITHUB_ENV
+        echo "TCLSUBDIR=${{ inputs.toolchain }}-${{ inputs.target-arch }}-${{ inputs.tcl-tag }}-${{ inputs.tk-tag }}" >> $env:GITHUB_ENV
         echo "TCLEXTRASDIR=${{ runner.temp }}/tcl-external-libs/${{ inputs.target-arch }}" >> $env:GITHUB_ENV
 
-    - name: Set Tcl path for VC on Windows
+    - name: Set Tcl path for msys2 on Windows
       if: runner.os == 'Windows' && inputs.toolchain == 'msys2'
       shell: bash
       run: |
         echo IMAGEOS=`cygpath -m "${ImageOS}"` >> $GITHUB_ENV
-        echo TCLDIR=`cygpath -m "${{ runner.temp }}/tcl/${{ inputs.toolchain }}-${{ inputs.target-arch }}-${{ inputs.tcl-tag }}"` >> $GITHUB_ENV
-        echo TCLSUBDIR=`cygpath -m "${{ inputs.toolchain }}-${{ inputs.target-arch }}-${{ inputs.tcl-tag }}"` >> $GITHUB_ENV
+        echo TCLINSTALLDIR=`cygpath -m "${{ runner.temp }}/tcl/${{ inputs.toolchain }}-${{ inputs.target-arch }}-${{ inputs.tcl-tag }}-${{ inputs.tk-tag }}"` >> $GITHUB_ENV
+        echo TCLSUBDIR=`cygpath -m "${{ inputs.toolchain }}-${{ inputs.target-arch }}-${{ inputs.tcl-tag }}-${{ inputs.tk-tag }}"` >> $GITHUB_ENV
         echo TCLEXTRASDIR=`cygpath -m "${{ runner.temp }}/tcl-external-libs/${{ inputs.target-arch }}"` >> $GITHUB_ENV
 
     - name: Set Tcl path for non-Windows
@@ -70,8 +86,8 @@ runs:
       shell: bash
       run: |
         echo "IMAGEOS=${ImageOS}" >> $GITHUB_ENV
-        echo "TCLDIR=${{ runner.temp }}/tcl/${{ inputs.tcl-tag }}" >> $GITHUB_ENV
-        echo "TCLSUBDIR=${{ inputs.tcl-tag }}" >> $GITHUB_ENV
+        echo "TCLINSTALLDIR=${{ runner.temp }}/tcl/${{ inputs.tcl-tag }}-${{ inputs.tk-tag }}" >> $GITHUB_ENV
+        echo "TCLSUBDIR=${{ inputs.tcl-tag }}-${{ inputs.tk-tag }}" >> $GITHUB_ENV
         echo "TCLEXTRASDIR=${{ runner.temp }}/tcl-external-libs" >> $GITHUB_ENV
 
     # Cache Tcl so we do not have to rebuild everytime. Note runner.os
@@ -83,8 +99,8 @@ runs:
       id: tcl-cache
       uses: actions/cache@v4
       with:
-        path: ${{ env.TCLDIR }}
-        key: ${{ runner.os }}-${{ env.IMAGEOS }}-tcl-${{ env.TCLSUBDIR }}
+        path: ${{ env.TCLINSTALLDIR }}
+        key: ${{ runner.os }}-${{ env.IMAGEOS }}-tcltk-${{ env.TCLSUBDIR }}
 
     - name: Checkout Tcl
       if: steps.tcl-cache.outputs.cache-hit != 'true'
@@ -94,6 +110,15 @@ runs:
         ref: ${{ inputs.tcl-tag }}
         path: tcl-${{ inputs.tcl-tag }}
 
+    # Note Tk is also cached in same location as Tcl
+    - name: Checkout Tk
+      if: steps.tcl-cache.outputs.cache-hit != 'true' && inputs.tk-tag
+      uses: actions/checkout@v4
+      with:
+        repository: tcltk/tk
+        ref: ${{ inputs.tk-tag }}
+        path: tk-${{ inputs.tk-tag }}
+
     # Build Tcl as per the input configuration.
 
     - name: Build Tcl on Windows with nmake
@@ -101,8 +126,16 @@ runs:
       working-directory: tcl-${{ inputs.tcl-tag }}/win
       shell: cmd
       run: |
-        nmake /s /f makefile.vc INSTALLDIR=${{ env.TCLDIR }}
-        nmake /s /f makefile.vc INSTALLDIR=${{ env.TCLDIR }} install
+        nmake /s /f makefile.vc INSTALLDIR=${{ env.TCLINSTALLDIR }}
+        nmake /s /f makefile.vc INSTALLDIR=${{ env.TCLINSTALLDIR }} install
+
+    - name: Build Tk on Windows with nmake
+      if: inputs.tk-tag && runner.os == 'Windows' && inputs.toolchain == 'vc' && steps.tcl-cache.outputs.cache-hit != 'true'
+      working-directory: tk-${{ inputs.tk-tag }}/win
+      shell: cmd
+      run: |
+        nmake /s /f makefile.vc INSTALLDIR=${{ env.TCLINSTALLDIR }} TCLDIR="../../tcl-${{ inputs.tcl-tag }}"
+        nmake /s /f makefile.vc INSTALLDIR=${{ env.TCLINSTALLDIR }} TCLDIR="../../tcl-${{ inputs.tcl-tag }}" install
 
     - name: Build Tcl on Windows with msys2
       if: runner.os == 'Windows' && inputs.toolchain == 'msys2' && steps.tcl-cache.outputs.cache-hit != 'true'
@@ -111,7 +144,18 @@ runs:
       run: |
         mkdir build
         cd build
-        ../configure --prefix=${{ env.TCLDIR }} || (cat config.log && exit 1)
+        ../configure --prefix=${{ env.TCLINSTALLDIR }} || (cat config.log && exit 1)
+        make -s
+        make install
+
+    - name: Build Tk on Windows with msys2
+      if: inputs.tk-tag && runner.os == 'Windows' && inputs.toolchain == 'msys2' && steps.tcl-cache.outputs.cache-hit != 'true'
+      working-directory: tk-${{ inputs.tk-tag }}/win
+      shell: msys2 {0}
+      run: |
+        mkdir build
+        cd build
+        ../configure --prefix=${{ env.TCLINSTALLDIR }} || (cat config.log && exit 1)
         make -s
         make install
 
@@ -122,7 +166,18 @@ runs:
       run: |
         mkdir build
         cd build
-        ../configure --prefix=${{ env.TCLDIR }} || (cat config.log && exit 1)
+        ../configure --prefix=${{ env.TCLINSTALLDIR }} || (cat config.log && exit 1)
+        make -s
+        make install
+
+    - name: Build Tk on non-Windows
+      if: inputs.tk-tag && runner.os != 'Windows' && steps.tcl-cache.outputs.cache-hit != 'true'
+      working-directory: tk-${{ inputs.tk-tag }}/unix
+      shell: bash
+      run: |
+        mkdir build
+        cd build
+        ../configure --with-tcl=${{ env.TCLINSTALLDIR }}/lib || (cat config.log && exit 1)
         make -s
         make install
 
