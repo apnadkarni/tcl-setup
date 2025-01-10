@@ -54,6 +54,7 @@ runs:
 
     - name: Setup system windowing libraries
       if: inputs.tk-tag && runner.os != 'windows'
+      shell: bash
       run: |
         sudo apt-get install -y libxft-dev libxss-dev
 
