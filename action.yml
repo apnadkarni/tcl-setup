@@ -161,7 +161,7 @@ runs:
 
     - name: Build Tk on non-Windows
       if: runner.os != 'Windows' && steps.tcl-cache.outputs.cache-hit != 'true' && inputs.tk-tag
-      working-directory: tk-${{ inputs.tcl-tag }}/unix
+      working-directory: tk-${{ inputs.tk-tag }}/unix
       shell: bash
       run: |
         mkdir build
