@@ -47,6 +47,7 @@ runs:
 
     - name: Disallow tk for msys2 and macos
       if: inputs.tk-tag && (runner.os == 'macos' || (runner.os == 'windows' && inputs.toolchain == 'msys2'))
+      shell: bash
       run: |
         echo "::error::Tk is not supported by this action on MacOS or Windows msys2."
         exit 1
