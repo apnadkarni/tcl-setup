@@ -46,10 +46,10 @@ runs:
         exit 1
 
     - name: Disallow tk for msys2 and macos
-      if: inputs.tk-tag && (runner.os == 'macos' || (runner.os == 'windows' && inputs.toolchain == 'msys2'))
+      if: inputs.tk-tag && (runner.os == 'macos')
       shell: bash
       run: |
-        echo "::error::Tk is not supported by this action on MacOS or Windows msys2."
+        echo "::error::Tk is not supported by this action on MacOS."
         exit 1
 
     - name: Setup system windowing libraries
@@ -130,7 +130,7 @@ runs:
         nmake /s /f makefile.vc INSTALLDIR=${{ env.TCLINSTALLDIR }} install
 
     - name: Build Tk on Windows with nmake
-      if: runner.os == 'Windows' && inputs.toolchain == 'vc' && steps.tcl-cache.outputs.cache-hit != 'true' && inputs.tk-tag
+      if: inputs.tk-tag && runner.os == 'Windows' && inputs.toolchain == 'vc' && steps.tcl-cache.outputs.cache-hit != 'true'
       working-directory: tk-${{ inputs.tk-tag }}/win
       shell: cmd
       run: |
@@ -140,6 +140,17 @@ runs:
     - name: Build Tcl on Windows with msys2
       if: runner.os == 'Windows' && inputs.toolchain == 'msys2' && steps.tcl-cache.outputs.cache-hit != 'true'
       working-directory: tcl-${{ inputs.tcl-tag }}/win
+      shell: msys2 {0}
+      run: |
+        mkdir build
+        cd build
+        ../configure --prefix=${{ env.TCLINSTALLDIR }} || (cat config.log && exit 1)
+        make -s
+        make install
+
+    - name: Build Tk on Windows with msys2
+      if: inputs.tk-tag && runner.os == 'Windows' && inputs.toolchain == 'msys2' && steps.tcl-cache.outputs.cache-hit != 'true'
+      working-directory: tk-${{ inputs.tcl-tag }}/win
       shell: msys2 {0}
       run: |
         mkdir build
@@ -160,7 +171,7 @@ runs:
         make install
 
     - name: Build Tk on non-Windows
-      if: runner.os != 'Windows' && steps.tcl-cache.outputs.cache-hit != 'true' && inputs.tk-tag
+      if: inputs.tk-tag && runner.os != 'Windows' && steps.tcl-cache.outputs.cache-hit != 'true'
       working-directory: tk-${{ inputs.tk-tag }}/unix
       shell: bash
       run: |
