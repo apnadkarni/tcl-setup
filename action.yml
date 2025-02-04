@@ -11,12 +11,12 @@ inputs:
   tk-tag:
     description: "Tag of Tk repository branch. Only specify for Tk extensions"
     required: false
-  target-arch:
-    description: "Architecture - x86 or x64. Only used on Windows"
-    required: true
   toolchain:
     description: "Toolchain - msys2 or vc. Only used on Windows"
-    required: true
+    required: false
+  target-arch:
+    description: "Architecture - x86 or x64 for vc and mingw32 or mingw64 for msys2. Only used on Windows"
+    required: false
 
 runs:
   using: 'composite'
