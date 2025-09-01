@@ -18,7 +18,7 @@ Example:
 
 ```yaml
 - name: Setup Tcl
-  uses: apnadkarni/tcl-setup@v1
+  uses: apnadkarni/tcl-setup@v2
   with:
     # The Tcl repository GIT tag or branch identifying the Tcl version
     # against which the extension is to be built. Required.
