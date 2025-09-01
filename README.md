@@ -46,7 +46,7 @@ for use by the steps in the caller.
   Callers may use this to distinguish between build configurations, for example,
   a cached key.
 - `TCLEXTRASDIR` set to the directory where extensions may build any additional
-  thirdparty libraries that may be required.
+  thirdparty libraries that may be required. This directory is specific
 - `IMAGEOS` set to the runner image (e.g. `ubuntu20`). This is supposed to be
   already available in the `env` context but is not seen by the caching code
   so it is set explicitly.
