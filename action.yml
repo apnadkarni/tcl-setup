@@ -11,6 +11,7 @@ inputs:
   tk-tag:
     description: "Tag of Tk repository branch. Only specify for Tk extensions"
     required: false
+    default: "notk"
   toolchain:
     description: "Toolchain - msys2 or vc. Only used on Windows"
     required: false
@@ -45,50 +46,101 @@ runs:
         echo "::error::Invalid target-arch value (${{ inputs.target-arch }}.) Must be mingw32 or mingw64."
         exit 1
 
-    - name: Disallow tk for msys2 and macos
-      if: inputs.tk-tag && (runner.os == 'macos')
+    - name: Disallow tk for macos
+      if: inputs.tk-tag != 'notk' && runner.os == 'macos'
       shell: bash
       run: |
         echo "::error::Tk is not supported by this action on MacOS."
         exit 1
 
     - name: Setup system windowing libraries
-      if: inputs.tk-tag && runner.os != 'windows'
+      if: inputs.tk-tag != 'notk' && runner.os != 'windows'
       shell: bash
       run: |
         sudo apt-get install -y libxft-dev libxss-dev
 
     # Set up environment variables that can be used by steps below as well
     # as steps in the caller workflow.
-    # NOTE: the preset IMAGEOS is explicitly set to itself else it is not available
-    # in the tcl-cache step below. No idea why.
+    # IMAGEOS - ubuntu22, ubuntu24 etc.
+    # TCLGA_TRIPLET - imageos-toolchain-arch
+    # TCLGA_SUBDIR - TCLGA_TRIPLET + tcl-tag + tk-tag
+    # TCLGA_INSTALL - location where Tcl will be installed
+    # TCLGA_TOPDIR - top level directory where Tcl and Tk source will be checked out
+    # TCLGA_TCLSOURCE - location where Tcl source will be checked out
+    # TCLGA_TKSOURCE - location where Tk source will be checked out
+    # TCLGA_EXTRAS - location where external Tcl libraries are stored that
+    #    are independent of Tcl or Tk version.
+    # IMPORTANT: All repository paths must be under GITHUB_WORKSPACE else
+    # the checkout action will fail.
 
+    # Note the two line approach to passing on environment variables. First
+    # set them in the current shell and then pass them on to GITHUB_ENV.
+    # Could not get it to work in a single line.
+    # Also note the specific mixed syntax for setting env vars in powershell
+    # The preset IMAGEOS is explicitly set to itself else it is not available
+    # in the tcl-cache step later. No idea why.
     - name: Set Tcl path for VC on Windows
       if: runner.os == 'Windows' && inputs.toolchain == 'vc'
       shell: pwsh
       run: |
-        echo "IMAGEOS=${ImageOS}" >> $env:GITHUB_ENV
-        echo "TCLINSTALLDIR=${{ runner.temp }}/tcl/${{ inputs.toolchain }}-${{ inputs.target-arch }}-${{ inputs.tcl-tag }}-${{ inputs.tk-tag }}" >> $env:GITHUB_ENV
-        echo "TCLSUBDIR=${{ inputs.toolchain }}-${{ inputs.target-arch }}-${{ inputs.tcl-tag }}-${{ inputs.tk-tag }}" >> $env:GITHUB_ENV
-        echo "TCLEXTRASDIR=${{ runner.temp }}/tcl-external-libs/${{ inputs.target-arch }}" >> $env:GITHUB_ENV
+        $IMAGEOS=$env:IMAGEOS
+        $TCLGA_TRIPLET="$IMAGEOS-${{ inputs.toolchain }}-${{ inputs.target-arch }}"
+        $TCLGA_SUBDIR="$TCLGA_TRIPLET-${{ inputs.tcl-tag }}-${{ inputs.tk-tag }}"
+        $TCLGA_TOP="$env:GITHUB_WORKSPACE\\$TCLGA_SUBDIR"
+        $TCLGA_INSTALL="$TCLGA_TOP\\installed"
+        $TCLGA_TCLSOURCE="$TCLGA_TOP\\tcl"
+        $TCLGA_TKSOURCE="$TCLGA_TOP\\tk"
+        $TCLGA_EXTRAS="$env:GITHUB_WORKSPACE\\$TCLGA_TRIPLET"
+        "IMAGEOS=$IMAGEOS" >> $env:GITHUB_ENV
+        "TCLGA_TRIPLET=$TCLGA_TRIPLET" >> $env:GITHUB_ENV
+        "TCLGA_SUBDIR=$TCLGA_SUBDIR" >> $env:GITHUB_ENV
+        "TCLGA_TOP=$TCLGA_TOP" >> $env:GITHUB_ENV
+        "TCLGA_INSTALL=$TCLGA_INSTALL" >> $env:GITHUB_ENV
+        "TCLGA_TCLSOURCE=$TCLGA_TCLSOURCE" >> $env:GITHUB_ENV
+        "TCLGA_TKSOURCE=$TCLGA_TKSOURCE" >> $env:GITHUB_ENV
+        "TCLGA_EXTRAS=$TCLGA_EXTRAS" >> $env:GITHUB_ENV
 
     - name: Set Tcl path for msys2 on Windows
       if: runner.os == 'Windows' && inputs.toolchain == 'msys2'
       shell: bash
       run: |
-        echo IMAGEOS=`cygpath -m "${ImageOS}"` >> $GITHUB_ENV
-        echo TCLINSTALLDIR=`cygpath -m "${{ runner.temp }}/tcl/${{ inputs.toolchain }}-${{ inputs.target-arch }}-${{ inputs.tcl-tag }}-${{ inputs.tk-tag }}"` >> $GITHUB_ENV
-        echo TCLSUBDIR=`cygpath -m "${{ inputs.toolchain }}-${{ inputs.target-arch }}-${{ inputs.tcl-tag }}-${{ inputs.tk-tag }}"` >> $GITHUB_ENV
-        echo TCLEXTRASDIR=`cygpath -m "${{ runner.temp }}/tcl-external-libs/${{ inputs.target-arch }}"` >> $GITHUB_ENV
+        IMAGEOS=$ImageOS
+        TCLGA_TRIPLET="$IMAGEOS-${{ inputs.toolchain }}-${{ inputs.target-arch }}"
+        TCLGA_SUBDIR="$TCLGA_TRIPLET-${{ inputs.tcl-tag }}-${{ inputs.tk-tag }}"
+        TCLGA_TOP=`cygpath -m "$GITHUB_WORKSPACE/$TCLGA_SUBDIR"`
+        TCLGA_INSTALL="$TCLGA_TOP/installed"
+        TCLGA_TCLSOURCE="$TCLGA_TOP/tcl"
+        TCLGA_TKSOURCE="$TCLGA_TOP/tk"
+        TCLGA_EXTRAS=`cygpath -m "$GITHUB_WORKSPACE/$TCLGA_TRIPLET"`
+        echo "IMAGEOS=$IMAGEOS" >> $GITHUB_ENV
+        echo "TCLGA_TRIPLET=$TCLGA_TRIPLET" >> $GITHUB_ENV
+        echo "TCLGA_SUBDIR=$TCLGA_SUBDIR" >> $GITHUB_ENV
+        echo "TCLGA_TOP=$TCLGA_TOP" >> $GITHUB_ENV
+        echo "TCLGA_INSTALL=$TCLGA_INSTALL" >> $GITHUB_ENV
+        echo "TCLGA_TCLSOURCE=$TCLGA_TCLSOURCE" >> $GITHUB_ENV
+        echo "TCLGA_TKSOURCE=$TCLGA_TKSOURCE" >> $GITHUB_ENV
+        echo "TCLGA_EXTRAS=$TCLGA_EXTRAS" >> $GITHUB_ENV
 
     - name: Set Tcl path for non-Windows
       if: runner.os != 'Windows'
       shell: bash
       run: |
-        echo "IMAGEOS=${ImageOS}" >> $GITHUB_ENV
-        echo "TCLINSTALLDIR=${{ runner.temp }}/tcl/${{ inputs.tcl-tag }}-${{ inputs.tk-tag }}" >> $GITHUB_ENV
-        echo "TCLSUBDIR=${{ inputs.tcl-tag }}-${{ inputs.tk-tag }}" >> $GITHUB_ENV
-        echo "TCLEXTRASDIR=${{ runner.temp }}/tcl-external-libs" >> $GITHUB_ENV
+        IMAGEOS=$ImageOS
+        TCLGA_TRIPLET="$IMAGEOS-${{ inputs.toolchain }}-${{ inputs.target-arch }}"
+        TCLGA_SUBDIR="$TCLGA_TRIPLET-${{ inputs.tcl-tag }}-${{ inputs.tk-tag }}"
+        TCLGA_TOP="$GITHUB_WORKSPACE/$TCLGA_SUBDIR"
+        TCLGA_INSTALL="$TCLGA_TOP/installed"
+        TCLGA_TCLSOURCE="$TCLGA_TOP/tcl"
+        TCLGA_TKSOURCE="$TCLGA_TOP/tk"
+        TCLGA_EXTRAS="$GITHUB_WORKSPACE/$TCLGA_TRIPLET"
+        echo "IMAGEOS=$IMAGEOS" >> $GITHUB_ENV
+        echo "TCLGA_TRIPLET=$TCLGA_TRIPLET" >> $GITHUB_ENV
+        echo "TCLGA_SUBDIR=$TCLGA_SUBDIR" >> $GITHUB_ENV
+        echo "TCLGA_TOP=$TCLGA_TOP" >> $GITHUB_ENV
+        echo "TCLGA_INSTALL=$TCLGA_INSTALL" >> $GITHUB_ENV
+        echo "TCLGA_TCLSOURCE=$TCLGA_TCLSOURCE" >> $GITHUB_ENV
+        echo "TCLGA_TKSOURCE=$TCLGA_TKSOURCE" >> $GITHUB_ENV
+        echo "TCLGA_EXTRAS=$TCLGA_EXTRAS" >> $GITHUB_ENV
 
     # Cache Tcl so we do not have to rebuild everytime. Note runner.os
     # does not suffice as subkey as it does not include os version. Hence
@@ -99,8 +151,8 @@ runs:
       id: tcl-cache
       uses: actions/cache@v4
       with:
-        path: ${{ env.TCLINSTALLDIR }}
-        key: ${{ runner.os }}-${{ env.IMAGEOS }}-tcltk-${{ env.TCLSUBDIR }}
+        path: ${{ env.TCLGA_TOP }}
+        key: tcltk-${{ env.TCLGA_SUBDIR }}
 
     - name: Checkout Tcl
       if: steps.tcl-cache.outputs.cache-hit != 'true'
@@ -108,76 +160,75 @@ runs:
       with:
         repository: tcltk/tcl
         ref: ${{ inputs.tcl-tag }}
-        path: tcl-${{ inputs.tcl-tag }}
+        path: ${{ env.TCLGA_TCLSOURCE }}
 
-    # Note Tk is also cached in same location as Tcl
     - name: Checkout Tk
-      if: steps.tcl-cache.outputs.cache-hit != 'true' && inputs.tk-tag
+      if: steps.tcl-cache.outputs.cache-hit != 'true' && inputs.tk-tag != 'notk'
       uses: actions/checkout@v4
       with:
         repository: tcltk/tk
         ref: ${{ inputs.tk-tag }}
-        path: tk-${{ inputs.tk-tag }}
+        path: ${{ env.TCLGA_TKSOURCE }}
 
     # Build Tcl as per the input configuration.
 
     - name: Build Tcl on Windows with nmake
       if: runner.os == 'Windows' && inputs.toolchain == 'vc' && steps.tcl-cache.outputs.cache-hit != 'true'
-      working-directory: tcl-${{ inputs.tcl-tag }}/win
+      working-directory: ${{ env.TCLGA_TCLSOURCE }}/win
       shell: cmd
       run: |
-        nmake /s /f makefile.vc INSTALLDIR=${{ env.TCLINSTALLDIR }}
-        nmake /s /f makefile.vc INSTALLDIR=${{ env.TCLINSTALLDIR }} install
+        nmake /s /f makefile.vc INSTALLDIR=${{ env.TCLGA_INSTALL }}
+        nmake /s /f makefile.vc INSTALLDIR=${{ env.TCLGA_INSTALL }} install
 
     - name: Build Tk on Windows with nmake
-      if: inputs.tk-tag && runner.os == 'Windows' && inputs.toolchain == 'vc' && steps.tcl-cache.outputs.cache-hit != 'true'
-      working-directory: tk-${{ inputs.tk-tag }}/win
+      if: inputs.tk-tag != 'notk' && runner.os == 'Windows' && inputs.toolchain == 'vc' && steps.tcl-cache.outputs.cache-hit != 'true'
+      working-directory: ${{ env.TCLGA_TKSOURCE }}/win
       shell: cmd
       run: |
-        nmake /s /f makefile.vc INSTALLDIR=${{ env.TCLINSTALLDIR }} TCLDIR="../../tcl-${{ inputs.tcl-tag }}"
-        nmake /s /f makefile.vc INSTALLDIR=${{ env.TCLINSTALLDIR }} TCLDIR="../../tcl-${{ inputs.tcl-tag }}" install
+        nmake /s /f makefile.vc INSTALLDIR=${{ env.TCLGA_INSTALL }} TCLDIR=${{ env.TCLGA_TCLSOURCE }}
+        nmake /s /f makefile.vc INSTALLDIR=${{ env.TCLGA_INSTALL }} TCLDIR=${{ env.TCLGA_TCLSOURCE }} install
 
     - name: Build Tcl on Windows with msys2
       if: runner.os == 'Windows' && inputs.toolchain == 'msys2' && steps.tcl-cache.outputs.cache-hit != 'true'
-      working-directory: tcl-${{ inputs.tcl-tag }}/win
+      working-directory: ${{ env.TCLGA_TCLSOURCE }}/win
       shell: msys2 {0}
       run: |
         mkdir build
         cd build
-        ../configure --prefix=${{ env.TCLINSTALLDIR }} || (cat config.log && exit 1)
+        ../configure --prefix=${{ env.TCLGA_INSTALL }} || (cat config.log && exit 1)
         make -s
         make install
 
     - name: Build Tk on Windows with msys2
-      if: inputs.tk-tag && runner.os == 'Windows' && inputs.toolchain == 'msys2' && steps.tcl-cache.outputs.cache-hit != 'true'
-      working-directory: tk-${{ inputs.tk-tag }}/win
+      if: inputs.tk-tag != 'notk' && runner.os == 'Windows' && inputs.toolchain == 'msys2' && steps.tcl-cache.outputs.cache-hit != 'true'
+      working-directory: ${{ env.TCLGA_TKSOURCE }}/win
       shell: msys2 {0}
       run: |
         mkdir build
         cd build
-        ../configure --prefix=${{ env.TCLINSTALLDIR }} || (cat config.log && exit 1)
+        ../configure --prefix=${{ env.TCLGA_INSTALL }} || (cat config.log && exit 1)
         make -s
         make install
 
     - name: Build Tcl on non-Windows
       if: runner.os != 'Windows' && steps.tcl-cache.outputs.cache-hit != 'true'
-      working-directory: tcl-${{ inputs.tcl-tag }}/unix
+      working-directory: ${{ env.TCLGA_TCLSOURCE }}/unix
       shell: bash
       run: |
         mkdir build
         cd build
-        ../configure --prefix=${{ env.TCLINSTALLDIR }} || (cat config.log && exit 1)
+        ../configure --prefix=${{ env.TCLGA_INSTALL }} || (cat config.log && exit 1)
         make -s
         make install
 
     - name: Build Tk on non-Windows
-      if: inputs.tk-tag && runner.os != 'Windows' && steps.tcl-cache.outputs.cache-hit != 'true'
-      working-directory: tk-${{ inputs.tk-tag }}/unix
+      if: inputs.tk-tag != 'notk' && runner.os != 'Windows' && steps.tcl-cache.outputs.cache-hit != 'true'
+      working-directory: tk-${{ env.TCLGA_TKSOURCE }}/unix
       shell: bash
       run: |
         mkdir build
         cd build
-        ../configure --with-tcl=${{ env.TCLINSTALLDIR }}/lib || (cat config.log && exit 1)
+        ../configure --with-tcl=${{ env.TCLGA_INSTALL }}/lib || (cat config.log && exit 1)
         make -s
         make install
 
