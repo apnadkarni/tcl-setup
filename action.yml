@@ -152,7 +152,7 @@ runs:
       uses: actions/cache@v4
       with:
         path: ${{ env.TCLGA_TOP }}
-        key: $tcltk-${{ env.TCLGA_SUBDIR }}
+        key: tcltk-${{ env.TCLGA_SUBDIR }}
 
     - name: Checkout Tcl
       if: steps.tcl-cache.outputs.cache-hit != 'true'
